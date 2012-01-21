@@ -59,14 +59,16 @@ class util{
 	private function _echo($ar,$pad=1,$pre=0,$pret=''){
 		$max=0;
 		foreach ($ar as $k=>$v){
-			$kl=strlen($v['k']);
-			if($kl>$max) $max=$kl;
+			if(!is_null($v['v'])){
+				$kl=strlen($v['k']);
+				if($kl>$max) $max=$kl;
+			}
 		}
 		$padt=str_repeat(' ',$pad).'|'.str_repeat(' ',$pad);
 		foreach ($ar as $k=>$v){
 			$kl=strlen($v['k']);
 			echo str_repeat(' ',$pre).$pret.$v['k'];
-			if(!is_null($v)){
+			if(!is_null($v['v'])){
 				echo str_repeat(' ',$max-$kl);
 				echo $padt;
 				echo $v['v'];
@@ -87,26 +89,26 @@ class util{
 		$tmp=array();
 		$tmp[]=array(
 			'k'=>'response size',
-			'v'=>$d['info']['length'],
+			'v'=>$d['info']['length'].' byte',
 		);
 		if(isset($d['info']['time.accept']))
 			$tmp[]=array(
 				'k'=>'Connect time',
-				'v'=>$d['info']['time.accept'],
+				'v'=>$d['info']['time.accept'].' sec',
 			);
 		if(isset($d['info']['time.execute']))
 			$tmp[]=array(
 				'k'=>'Waiting time',
-				'v'=>$d['info']['time.execute'],
+				'v'=>$d['info']['time.execute'].' sec',
 			);
 		if(isset($d['info']['time.exit']))
 			$tmp[]=array(
 				'k'=>'Processing time',
-				'v'=>$d['info']['time.exit'],
+				'v'=>$d['info']['time.exit'].' sec',
 			);
 		$tmp[]=array(
 			'k'=>'Total time',
-			'v'=>$d['info']['time.total'],
+			'v'=>$d['info']['time.total'].' sec',
 		);
 		$this->_echo($tmp);
 //////////////////////////
@@ -133,6 +135,16 @@ class util{
 			}
 			
 			$tmp[]=array('k'=>'method','v'=>$v['method']);
+			if($v['method']=='hash' && isset($d['hash'][$v['count']])){
+				$y='';$z='';
+				foreach($d['hash'][$v['count']] as $x){
+					$y.=$z.$x;
+					$z=' + ';
+				}
+				$tmp[]=array('k'=>'hash','v'=>$y);
+
+			}
+
 			$tmp[]=array('k'=>'return','v'=>$v['return']);
 			$pad=$this->_echo($tmp);
 			$tmp=array();
@@ -164,19 +176,45 @@ class util{
 
 //////////////////////////
 		//ヘッダリスト
+
 		foreach($d['var'] as $k => $v){
+			$tmp=array();
+			$tmp[]=array(
+				'k'=>'variable infomation.',
+				'v'=>null
+			);
 			$this->_echoline('#');
 			if($k>0){
 				switch($d['countinfo'][$k]){
 					case 'restart':
 						$restart++;
-						echo "<<restart count={$k}>>\n";
+						$tmp[]=array(
+							'k'=>'restart',
+							'v'=>"yes(count={$k})"
+						);
 						break;
 					case 'esi':
-						echo "<<ESI request>>\n";
+						$tmp[]=array(
+							'k'=>'ESI',
+							'v'=>"yes"
+						);
 					
 				}
 			}
+			if(isset($d['hash'][$k])){
+				$y='';$z='';
+				foreach($d['hash'][$k] as $x){
+					$y.=$z.$x;
+					$z=' + ';
+				}
+				$tmp[]=array(
+					'k'=>'hash',
+					'v'=>$y
+				);
+
+			}
+			$this->_echo($tmp);
+
 			foreach($v as $kk => $vv){
 				$tmp=array();
 				foreach($vv as $kkk => $vvv){
@@ -265,6 +303,7 @@ if(count($sess)>0){
 					'var'		=>array(),
 					'call'		=>array(),
 					'raw'		=>array(),
+					'hash'		=>array(),
 				);
 				$req = &$sess[count($sess)-1];
 				$req['var'][0]						=array();
@@ -351,6 +390,9 @@ if(count($sess)>0){
 					'type'		=>'log',
 					'data'		=>$raw['msg'],
 				);
+				break;
+			case 'Hash':
+				$req['hash'][$req['count']][]=$raw['msg'];
 				break;
 		}
 		//var
