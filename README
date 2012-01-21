@@ -2,4 +2,129 @@
 varnishlog | php vltrans.php
 
 
+varnishlog
+
+
+    0 CLI          - Rd ping
+    0 CLI          - Wr 200 19 PONG 1327160526 1.0
+   12 Debug        c thr 0x7fbdf35f0700 STP_FIRST sp 0x7fbdf0825008 obj (nil) vcl (nil)
+   12 Interrupted  c SessionOpen
+   12 SessionOpen  c 192.168.1.199 41178 :6081
+   12 Debug        c thr 0x7fbdf35f0700 STP_WAIT sp 0x7fbdf0825008 obj (nil) vcl (nil)
+   12 Debug        c thr 0x7fbdf35f0700 STP_START sp 0x7fbdf0825008 obj (nil) vcl (nil)
+   12 Interrupted  c ReqStart
+   12 ReqStart     c 192.168.1.199 41178 712798904
+   12 RxRequest    c GET
+   12 RxURL        c /b
+   12 RxProtocol   c HTTP/1.0
+   12 RxHeader     c User-Agent: Wget/1.12 (linux-gnu)
+   12 RxHeader     c Accept: */*
+   12 RxHeader     c Host: 192.168.1.199:6081
+   12 RxHeader     c Connection: Keep-Alive
+   12 Debug        c thr 0x7fbdf35f0700 STP_RECV sp 0x7fbdf0825008 obj (nil) vcl 0x7fbdf9d05228
+   12 VCL_call     c recv 1 7.1
+   12 VCL_Log      c a
+   12 VCL_trace    c 2 9.1
+   12 VCL_Log      c b
+   12 VCL_trace    c 3 11.1
+   12 VCL_Log      c a
+   12 VCL_return   c lookup
+   12 VCL_call     c hash 18 85.5
+   12 Hash         c /b
+   12 VCL_trace    c 19 87.9
+   12 Hash         c 192.168.1.199:6081
+   12 VCL_return   c hash
+   12 Debug        c thr 0x7fbdf35f0700 STP_LOOKUP sp 0x7fbdf0825008 obj (nil) vcl 0x7fbdf9d05228
+   12 Hit          c 712798901
+   12 Debug        c thr 0x7fbdf35f0700 STP_HIT sp 0x7fbdf0825008 obj 0x7fbddd4f3400 vcl 0x7fbdf9d05228
+   12 VCL_call     c hit 21 95.5 deliver
+   12 Debug        c thr 0x7fbdf35f0700 STP_PREPRESP sp 0x7fbdf0825008 obj 0x7fbddd4f3400 vcl 0x7fbdf9d05228
+   12 VCL_call     c deliver 26 116.5 deliver
+   12 Debug        c thr 0x7fbdf35f0700 STP_DELIVER sp 0x7fbdf0825008 obj 0x7fbddd4f3400 vcl 0x7fbdf9d05228
+   12 TxProtocol   c HTTP/1.1
+   12 TxStatus     c 200
+   12 TxResponse   c OK
+   12 TxHeader     c Server: Apache/2.2.15 (Scientific Linux)
+   12 TxHeader     c Last-Modified: Tue, 12 Jul 2011 13:41:51 GMT
+   12 TxHeader     c ETag: "59c9-3805fb0-4a7df764cd0a0"
+   12 TxHeader     c Content-Type: text/plain; charset=UTF-8
+   12 TxHeader     c Content-Length: 58744752
+   12 TxHeader     c Accept-Ranges: bytes
+   12 TxHeader     c Date: Sat, 21 Jan 2012 15:42:07 GMT
+   12 TxHeader     c X-Varnish: 712798904 712798901
+   12 TxHeader     c Age: 47
+   12 TxHeader     c Via: 1.1 varnish
+   12 TxHeader     c Connection: keep-alive
+   12 Debug        c thr 0x7fbdf35f0700 STP_DONE sp 0x7fbdf0825008 obj (nil) vcl 0x7fbdf9d05228
+   12 Length       c 58744752
+   12 ReqEnd       c 712798904 1327160527.604427099 1327160527.638679504 0.000092268 0.000093937 0.034158468
+   12 Debug        c thr 0x7fbdf35f0700 STP_WAIT sp 0x7fbdf0825008 obj (nil) vcl (nil)
+   12 SessionClose c EOF
+   12 Debug        c thr 0x7fbdf35f0700 STP_DONE sp 0x7fbdf0825008 obj (nil) vcl (nil)
+   12 StatSess     c 192.168.1.199 41178 0 1 1 0 0 0 352 58744752
+    0 CLI          - Rd ping
+
+
+varnishlog | php vltrans.php
+response size   | 58744752 byte
+Connect time    | 0.000092268 sec
+Waiting time    | 0.000093937 sec
+Processing time | 0.034158468 sec
+Total time      | 0.034252405166626 sec
+------------------------------------------------------------
+       | ----------------------------------------------
+method | recv
+return | lookup
+       | trace | vrt_count:1 vcl_line:7 vcl_pos:1
+       | log   | a
+       | trace | vrt_count:2 vcl_line:9 vcl_pos:1
+       | log   | b
+       | trace | vrt_count:3 vcl_line:11 vcl_pos:1
+       | log   | a
+       | ----------------------------------------------
+method | hash
+hash   | /b + 192.168.1.199:6081
+return | hash
+       | trace | vrt_count:18 vcl_line:85 vcl_pos:5
+       | trace | vrt_count:19 vcl_line:87 vcl_pos:9
+       | ----------------------------------------------
+method | hit
+return | deliver
+       | trace | vrt_count:21 vcl_line:95 vcl_pos:5
+       | ----------------------------------------------
+method | deliver
+return | deliver
+       | trace | vrt_count:26 vcl_line:116 vcl_pos:5
+############################################################
+variable infomation.
+hash | /b + 192.168.1.199:6081
+------------------------------------------------------------
+req.request         | GET
+req.url             | /b
+req.proto           | HTTP/1.0
+req.http.User-Agent | Wget/1.12 (linux-gnu)
+req.http.Accept     | */*
+req.http.Host       | 192.168.1.199:6081
+req.http.Connection | Keep-Alive
+
+------------------------------------------------------------
+resp.proto               | HTTP/1.1
+resp.status              | 200
+resp.response            | OK
+resp.http.Server         | Apache/2.2.15 (Scientific Linux)
+resp.http.Last-Modified  | Tue, 12 Jul 2011 13:41:51 GMT
+resp.http.ETag           | "59c9-3805fb0-4a7df764cd0a0"
+resp.http.Content-Type   | text/plain; charset=UTF-8
+resp.http.Content-Length | 58744752
+resp.http.Accept-Ranges  | bytes
+resp.http.Date           | Sat, 21 Jan 2012 15:42:07 GMT
+resp.http.X-Varnish      | 712798904 712798901
+resp.http.Age            | 47
+resp.http.Via            | 1.1 varnish
+resp.http.Connection     | keep-alive
+
+############################################################
+############################################################
+############################################################
+
 
