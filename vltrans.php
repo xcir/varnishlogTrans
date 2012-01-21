@@ -52,9 +52,11 @@ class util{
 
   }
 
+/////////////////////////////////////////////////////
   private function _echoline($s='-'){
     echo str_repeat($s,60)."\n";
   }
+/////////////////////////////////////////////////////
   private function _echo($ar,$pad=1,$pre=0,$pret=''){
     $max=0;
     foreach ($ar as $k=>$v){
@@ -76,7 +78,7 @@ class util{
     }
     return $max;
   }
-
+/////////////////////////////////////////////////////
   public function searchHeader($search,$o){
     $search.=': ';
     foreach($o as $v){
@@ -90,12 +92,12 @@ class util{
     return false;
   }
 
+/////////////////////////////////////////////////////
   public function echoData($no=0){
     $restart=0;
     $d=&$this->retData[$no];
 
 
-//////////////////////////
     //info
     $tmp=array();
 
@@ -114,10 +116,11 @@ class util{
       'v'=>$d['var'][0]['req']['url'][0],
     );
 
-
+    $length=0;
+    foreach($d['info']['length'] as $v) $length+=$v;
     $tmp[]=array(
       'k'=>'response size',
-      'v'=>$d['info']['length'].' byte',
+      'v'=>$length.' byte',
     );
 
     foreach($d['var'] as $v){
@@ -129,7 +132,7 @@ class util{
         break;
       }
     }
-
+    
 
     if(isset($d['info']['time.accept']))
       $tmp[]=array(
@@ -152,8 +155,37 @@ class util{
     );
 
 
+    $restart=0;
+    $esi=0;
+    foreach($d['countinfo'] as $v){
+      if($v=='restart'){$restart++;}
+      elseif($v=='esi'){$esi++;}
+    }
+    $tmp[]=array(
+      'k'=>'restart count',
+      'v'=>$restart,
+    );
+    $tmp[]=array(
+      'k'=>'ESI count',
+      'v'=>$esi,
+    );
 
+    $tmp[]=array(
+      'k'=>'call backend count',
+      'v'=>count($d['backend']),
+    );
+    $hit=0;
+    $miss=0;
+    foreach($d['call'] as $v){
+      if($v['method']=='hit'){$hit++;}
+      elseif($v['method']=='miss'){$miss++;}
+    }
+    $tmp[]=array(
+      'k'=>'Cache',
+      'v'=>"HIT:{$hit} MISS:{$miss}",
+    );
 
+//var_dump($d);exit;
 
     $this->_echo($tmp);
 //////////////////////////
@@ -293,11 +325,13 @@ class util{
     $this->_echoline('#');
   }
 
+/////////////////////////////////////////////////////
   public function clearRetData(){
     $this->retData=array();
     $this->tmpTrx=array();
   }
 
+/////////////////////////////////////////////////////
   public function addTrx($raw){
     if(!$raw) return false;
     $n    = $raw['trx'];
@@ -366,7 +400,7 @@ if(count($sess)>0){
         $req['var'][0]['client']['ip']    =array($t[0]);
         break;
       case 'Length':
-        $req['info']['length']=$raw['msg'];
+        $req['info']['length'][]=$raw['msg'];
         break;
       case 'ReqEnd':
         //コミット
@@ -389,8 +423,9 @@ if(count($sess)>0){
         break;
       case 'Backend':
 //        $t =explode(' ',$raw['msg']);
-        $req['backend']=array_shift($this->tmpTrx[$t[0]]);
-        foreach($req['backend']['var'][0] as $k => $v){
+        $btmp=array_shift($this->tmpTrx[$t[0]]);
+        $req['backend'][]=$btmp;
+        foreach($btmp['var'][0] as $k => $v){
           $req['var'][$req['count']][$k]=$v;
         }
         break;
@@ -399,6 +434,7 @@ if(count($sess)>0){
         $tt=explode('.',$t[2]);
         $method=$t[0];
         if($method=='recv'){
+          $req['info']['hit'][$req['count']]=0;
           if($req['restartflg']){
             $req['restartflg']=false;
           }else{
@@ -451,6 +487,9 @@ if(count($sess)>0){
       case 'Hash':
         $req['hash'][$req['count']][]=$raw['msg'];
         break;
+      case 'Hit':
+        $req['info']['hit'][$req['count']]=1;
+        break;
 /*
       default:
         if(count($req['call'])>0){
@@ -473,6 +512,7 @@ if(count($sess)>0){
 
 
   //1行解釈
+/////////////////////////////////////////////////////
   public function rawDecode($s){
     //形式チェック
     if(!preg_match('/ +([^ ]+) +([^ ]+) +([^ ]+) +(.*)/',$s,$m)) return false;
