@@ -434,7 +434,7 @@ if(count($sess)>0){
         $tt=explode('.',$t[2]);
         $method=$t[0];
         if($method=='recv'){
-          $req['info']['hit'][$req['count']]=0;
+//          $req['info']['hit'][$req['count']]=0;
           if($req['restartflg']){
             $req['restartflg']=false;
           }else{
@@ -487,9 +487,9 @@ if(count($sess)>0){
       case 'Hash':
         $req['hash'][$req['count']][]=$raw['msg'];
         break;
-      case 'Hit':
-        $req['info']['hit'][$req['count']]=1;
-        break;
+//      case 'Hit':
+//        $req['info']['hit'][$req['count']]=1;
+//        break;
 /*
       default:
         if(count($req['call'])>0){
