@@ -252,7 +252,7 @@ class util{
     $restart=0;
 
 //////////////////////////
-    //ƒwƒbƒ_ƒŠƒXƒg
+    //ãƒ˜ãƒƒãƒ€ãƒªã‚¹ãƒˆ
 
     foreach($d['var'] as $k => $v){
       $tmp=array();
@@ -364,7 +364,7 @@ if(count($sess)>0){
 
 
     switch($raw['tag']){
-      //ƒoƒbƒNƒGƒ“ƒhŒn
+      //ãƒãƒƒã‚¯ã‚¨ãƒ³ãƒ‰ç³»
       case 'BackendOpen':
         $sess[]=array(
           'count'    =>0,
@@ -379,7 +379,7 @@ if(count($sess)>0){
         break;
       case 'BackendClose':
         break;
-      //ƒŠƒNƒGƒXƒgŒn
+      //ãƒªã‚¯ã‚¨ã‚¹ãƒˆç³»
       case 'ReqStart':
         $sess[]=array(
           'count'    =>0,
@@ -403,7 +403,7 @@ if(count($sess)>0){
         $req['info']['length'][]=$raw['msg'];
         break;
       case 'ReqEnd':
-        //ƒRƒ~ƒbƒg
+        //ã‚³ãƒŸãƒƒãƒˆ
         if($t[3] !='nan' && $t[3]>0)
           $req['info']['time.accept']    =$t[3];
         if($t[4] !='nan' && $t[4]>0)
@@ -511,13 +511,13 @@ if(count($sess)>0){
   }
 
 
-  //1s‰ğß
+  //1è¡Œè§£é‡ˆ
 /////////////////////////////////////////////////////
   public function rawDecode($s){
-    //Œ`®ƒ`ƒFƒbƒN
+    //å½¢å¼ãƒã‚§ãƒƒã‚¯
     if(!preg_match('/ +([^ ]+) +([^ ]+) +([^ ]+) +(.*)/',$s,$m)) return false;
 
-    //ƒeƒ“ƒ|ƒ‰ƒŠ‘ã“ü
+    //ãƒ†ãƒ³ãƒãƒ©ãƒªä»£å…¥
     $tmp=array();
     $tmp['trx']    =$m[1];
     $tmp['tag']    =$m[2];
@@ -527,7 +527,7 @@ if(count($sess)>0){
     $tmp['varkey']  =null;
 
     if($tmp['trx']=='0'){return false;}
-    //•Ï”‚Ìê‡“Á’è‚·‚é
+    //å¤‰æ•°ã®å ´åˆç‰¹å®šã™ã‚‹
     $rxtx  =substr($tmp['tag'],0,2);
     if($rxtx == 'Tx' || $rxtx == 'Rx' || $rxtx =='Ob'){
       $tmpk='';
