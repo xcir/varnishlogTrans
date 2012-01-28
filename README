@@ -1,22 +1,30 @@
-
-varnishlog | php vltrans.php
-
-
-///////////////////////////////////
-varnishlog
-///////////////////////////////////
+varnishlogTrans
+================
+convert varnishlog output to easy.
 
 
-    0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727142 1.0
-    0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727145 1.0
-    0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727148 1.0
-    0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727151 1.0
-    0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727154 1.0
+Feature Overview
+----------------
+* show request summary.
+* show execution sequence.
+* show variable.
+* support ESI request.
+* support restart.
+
+
+LICENSE
+----------------
+* MIT License
+
+
+How to use
+----------------
+* varnishlog | php vltrans.php
+
+
+output example(before convert)
+----------------
+
     0 CLI          - Rd ping
     0 CLI          - Wr 200 19 PONG 1327727157 1.0
    13 BackendOpen  b default 192.168.1.199 36011 192.168.1.199 81
@@ -142,9 +150,8 @@ varnishlog
     0 CLI          - Wr 200 19 PONG 1327727160 1.0
 
 
-///////////////////////////////////
-varnishlog | php vltrans.php
-///////////////////////////////////
+output example(after convert)
+----------------
 
 
 client ip           | 192.168.1.199
@@ -357,3 +364,7 @@ obj.http.Content-Type  | text/html; charset=UTF-8
 ############################################################
 ############################################################
 ############################################################
+
+
+
+xcir
