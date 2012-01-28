@@ -1,4 +1,6 @@
 <?php
+//error_reporting(E_ALL);
+
 
 function main(){
   $util = new util();
@@ -79,6 +81,62 @@ class util{
     }
     return $max;
   }
+
+
+/////////////////////////////////////////////////////
+  public function _echoRect($ar){
+  /*
+    ar
+     +key =rect-v
+     +value(array)
+      +k
+      +v
+  */
+    $maxkey=0;
+    //一時計算
+    foreach($ar as $v){
+      $t = strlen($v['key']);
+      if($maxkey < $t)
+        $maxkey = $t;
+      if(isset($v['title'])){
+        $t = strlen($v['title']);
+        if($maxkey < $t)
+          $maxkey = $t;
+        
+      }
+    }
+    $ha = (int)$maxkey/2 +2;
+    $_pad = str_repeat(' ',$ha);
+
+    //描画Rect
+    foreach($ar as $v){
+//    var_dump($v['value']);
+      if(isset($v['title'])){
+        $d = (int)($maxkey-strlen($v['title']))/2+1;
+        echo str_repeat(' ',$d).$v['title']."\n";
+      }
+      $this->__echoRect($v['key'],$maxkey);
+      echo "{$_pad}|\n";
+      $this->_echo($v['value'],1,0,$_pad.'| ');
+      echo "{$_pad}|\n";
+    }
+
+  }
+/////////////////////////////////////////////////////
+  private function __echoRect($txt,$len,$pad=1){
+    $d = (int)($len-strlen($txt))/2;
+    $_padp = str_repeat(' ',$pad+$d);
+    $_pads = $_padp;
+    $ds = ($len-strlen($txt))%2;
+    if($ds>0)
+      $_pads .= ' ';
+    $line = str_repeat('-',$pad*2+$len+2)."\n";
+    echo $line;
+    echo "|{$_padp}{$txt}{$_pads}|\n";
+    echo $line;
+  }
+
+
 /////////////////////////////////////////////////////
   public function searchHeader($search,$o){
     $search .= ': ';
@@ -91,6 +149,27 @@ class util{
       
     }
     return false;
+  }
+/////////////////////////////////////////////////////
+  private function _trace2array($vv){
+    $tmp = array();
+    switch($vv['type']){
+      case 'trace':
+        $m = "vrt_count:{$vv['vrt_count']} vcl_line:{$vv['vcl_line']} vcl_pos:{$vv['vcl_pos']}";
+        $tmp = array(
+          'k' => $vv['type'],
+          'v' => $m
+        );
+        break;
+      default:
+        $m = $vv['data'];
+        $tmp = array(
+          'k' => $vv['type'],
+          'v' => $m
+        );
+        break;
+    }
+    return $tmp;
   }
 
 /////////////////////////////////////////////////////
@@ -170,10 +249,13 @@ class util{
       'k' => 'ESI count',
       'v' => $esi,
     );
-
+    $bname='';
+    foreach($d['backend'] as $vz){
+      $bname.="{$vz['info']['backend.name']}({$vz['info']['backend.server']}) ";
+    }
     $tmp[] = array(
-      'k' => 'call backend count',
-      'v' => count($d['backend']),
+      'k' => 'call backend',
+      'v' => count($d['backend']).' '.rtrim($bname),
     );
     $hit = 0;
     $miss = 0;
@@ -186,13 +268,51 @@ class util{
       'v' => "HIT:{$hit} MISS:{$miss}",
     );
 
-//var_dump($d);exit;
 
     $this->_echo($tmp);
 //////////////////////////
     //calllist
     $this->_echoline();
-//    $last = false;
+
+    $tmp = array();
+    foreach($d['call'] as $k => $v){
+      $tmpm = array();
+///////
+      $title=null;
+      if($v['method'] == 'recv' && $v['count']>0){
+        switch($d['countinfo'][$v['count']]){
+          case 'restart':
+            $restart++;
+            $title="<<restart count={$v['count']}>>";
+            break;
+          case 'esi':
+            $title='<<ESI request>>';
+            break;
+        }
+      }
+
+//////////
+      foreach($v['trace'] as $kk => $vv){
+        $tmpm[] = $this->_trace2array($vv);
+      }
+      $tmpm[] = array('k' => '','v' => '');
+      if($v['method'] == 'hash' && isset($d['hash'][$v['count']])){
+        $y = '';
+        $z = '';
+        foreach($d['hash'][$v['count']] as $x){
+          $y .= $z.$x;
+          $z = ' + ';
+        }
+        $tmpm[] = array('k' => 'hash','v' => $y);
+      }
+
+      $tmpm[] = array('k' => 'return','v' => $v['return']);
+      $tmp[]=array('key'=>$v['method'],'value'=>$tmpm,'title'=>$title);
+    }
+    $this->_echoRect($tmp);
+    echo "\n\n";
+///////////////////////
+/*
     foreach($d['call'] as $k => $v){
     //var_dump($v);
       $tmp = array();
@@ -250,7 +370,7 @@ class util{
       $this->_echo($tmp,1,$pad,' | ');
     }
     $restart = 0;
-
+*/
 //////////////////////////
     //ヘッダリスト
 
