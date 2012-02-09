@@ -295,7 +295,7 @@ class util{
       foreach($v['trace'] as $kk => $vv){
         $tmpm[] = $this->_trace2array($vv);
       }
-      $tmpm[] = array('k' => '','v' => '');
+//      $tmpm[] = array('k' => '','v' => '');
       if($v['method'] == 'hash' && isset($d['hash'][$v['count']])){
         $y = '';
         $z = '';
@@ -311,66 +311,7 @@ class util{
     }
     $this->_echoRect($tmp);
     echo "\n\n";
-///////////////////////
-/*
-    foreach($d['call'] as $k => $v){
-    //var_dump($v);
-      $tmp = array();
-      $tmp[] = array('k' => '','v' => '----------------------------------------------');
-      if($v['method'] == 'recv' && $v['count']>0){
-        switch($d['countinfo'][$v['count']]){
-          case 'restart':
-            $restart++;
-            $tmp[] = array('k' => 'msg','v' => "<<restart count={$v['count']}>>");
-            break;
-          case 'esi':
-            
-            $tmp[] = array('k' => 'msg','v' => '<<ESI request>>');
-          
-        }
-      }
-      
-      $tmp[] = array('k' => 'method','v' => $v['method']);
-      if($v['method'] == 'hash' && isset($d['hash'][$v['count']])){
-        $y = '';
-        $z = '';
-        foreach($d['hash'][$v['count']] as $x){
-          $y .= $z.$x;
-          $z = ' + ';
-        }
-        $tmp[] = array('k' => 'hash','v' => $y);
 
-      }
-
-      $tmp[] = array('k' => 'return','v' => $v['return']);
-      $pad = $this->_echo($tmp);
-      $tmp = array();
-      $tk = array();
-      foreach($v['trace'] as $kk => $vv){
-        if(!isset($tk[$vv['type']]))
-          $tk[$vv['type']] = 0;
-        switch($vv['type']){
-          case 'trace':
-            $m = "vrt_count:{$vv['vrt_count']} vcl_line:{$vv['vcl_line']} vcl_pos:{$vv['vcl_pos']}";
-            $tmp[] = array(
-              'k' => $vv['type'],//.'('.$tk[$vv['type']].')',
-              'v' => $m
-            );
-            break;
-          default:
-            $m = $vv['data'];
-            $tmp[] = array(
-              'k' => $vv['type'],//.'('.$tk[$vv['type']].')',
-              'v' => $m
-            );
-            break;
-        }
-        $tk[$vv['type']]++;
-      }
-      $this->_echo($tmp,1,$pad,' | ');
-    }
-    $restart = 0;
-*/
 //////////////////////////
     //ヘッダリスト
 
@@ -416,17 +357,24 @@ class util{
 
       }
       $this->_echo($tmp);
-
       foreach($v as $kk => $vv){
         $tmp = array();
         foreach($vv as $kkk => $vvv){
           foreach($vvv as $kkkk => $vvvv){
+
             if($kkk == 'http'){
               $vd = explode(': ',$vvvv);
-              $tmp[] = array(
-                'k' => $kk.'.'.$kkk.'.'.$vd[0],
-                'v' => $vd[1]
-              );
+              if(isset($vd[1])){
+                $tmp[] = array(
+                  'k' => $kk.'.'.$kkk.'.'.$vd[0],
+                  'v' => $vd[1]
+                );
+              }else{
+                $tmp[] = array(
+                  'k' => $kk.'.'.$kkk.'.'.$vd[0],
+                  'v' => ''
+                );
+              }
             }else{
               $tmp[] = array(
                 'k' => $kk.'.'.$kkk,
@@ -529,8 +477,8 @@ class util{
         }
         break;
       case 'VCL_call':
-        $ret = $t[count($t)-1];
-        $tt = explode('.',$t[2]);
+        $call_cnt=count($t);
+        $ret = $t[$call_cnt - 1];
         $method = $t[0];
         if($method == 'recv'){
           if($req['restartflg']){
@@ -545,22 +493,26 @@ class util{
         }
         $tmp = array();
         $tmp['method']      = $method;
-        $tmp['trace']       = array(array());
         $tmp['count']       = $req['count'];
-        $trace              = &$tmp['trace'][0];
-        $trace['type']      = 'trace';
-        $trace['vrt_count'] = $t[1];
-        $trace['vcl_line']  = $tt[0];
-        $trace['vcl_pos']   = $tt[1];
-        $trace['count']     = $req['count'];
-        if(count($t)>3){
-          $tmp['return']  =$ret;
-          if($ret == 'restart'){
-            $req['count']++;
-            $req['restartflg'] = true;
-            $req['countinfo'][$req['count']] = 'restart';
-          }
+        $tmp['trace']       = array();
+        if($call_cnt>2){
+          $tt                 = explode('.',$t[2]);
+          $tmp['trace'][]     = array();
+          $trace              = &$tmp['trace'][0];
+          $trace['type']      = 'trace';
+          $trace['vrt_count'] = $t[1];
+          $trace['vcl_line']  = $tt[0];
+          $trace['vcl_pos']   = $tt[1];
+          $trace['count']     = $req['count'];
         }
+
+        $tmp['return']  =$ret;
+        if($ret == 'restart'){
+          $req['count']++;
+          $req['restartflg'] = true;
+          $req['countinfo'][$req['count']] = 'restart';
+        }
+
         $req['call'][]    =$tmp;
         break;
       case 'VCL_return':
