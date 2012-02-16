@@ -496,6 +496,28 @@ class util{
         $tmp['count']       = $req['count'];
         $tmp['trace']       = array();
         if($call_cnt>2){
+          //12 VCL_call     c recv 1 8.1 3 16.1 8 41.5 9 42.9 11 46.13 12 49.5 14 59.5 16 63.5 18 67.5 lookup
+          $cmax           = $call_cnt-1;
+          $vrtcount       = 0;
+          $vrtline        = 0;
+          $vrtpos         = 0;
+          if(!isset($tmp['trace']))
+            $tmp['trace'] = array();
+          for($x=1 ; $x < $cmax ; $x++){
+            if(0!=($x % 2)){
+              $vrtcount = $t[$x];
+            }else{
+              $tt = explode('.',$t[$x]);
+              $trace              = array();
+              $trace['type']      = 'trace';
+              $trace['vrt_count'] = $vrtcount;
+              $trace['vcl_line']  = $tt[0];
+              $trace['vcl_pos']   = $tt[1];
+              $trace['count']     = $req['count'];
+              $tmp['trace'][]     = $trace;
+            }
+          }
+/*
           $tt                 = explode('.',$t[2]);
           $tmp['trace'][]     = array();
           $trace              = &$tmp['trace'][0];
@@ -504,6 +526,7 @@ class util{
           $trace['vcl_line']  = $tt[0];
           $trace['vcl_pos']   = $tt[1];
           $trace['count']     = $req['count'];
+*/
         }
 
         $tmp['return']  =$ret;
