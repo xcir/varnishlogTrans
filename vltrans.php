@@ -1,8 +1,15 @@
 <?php
 //error_reporting(E_ALL);
-
+//   12 VCL_call     c recv 1 8.1 3 16.1 8 41.5 9 42.9 11 46.13 12 49.5 14 59.5 16 63.5 18 67.5 lookup
+//3つセットで格納　2以上格納されている場合はreturnあり
 
 function main(){
+  if(count($_SERVER['argv'])>1){
+    $_vcl=shell_exec("varnishd -d -f {$_SERVER['argv'][1]} -C");//とりあえずチェック中(testing..)
+    $getvcl = new getVCL();
+    $getvcl->get($_vcl);
+  }
+
   $util = new util();
   
   $fh = fopen('php://stdin','rb'); 
@@ -14,13 +21,209 @@ function main(){
     $rawA = $util->rawDecode($raw);
 
     if($util->addTrx($rawA)){
-      $util->echoData();
+      if(isset($_vcl)){
+        $util->echoData(0,$getvcl->VGC_ref);
+      }else{
+        $util->echoData(0);
+      }
+//      $util->echoData(0,$getvcl->VGC_ref,$getvcl->src);
       $util->clearRetData();
     
     }
   }
   fclose($fh); 
 
+
+}
+
+class getVCL{
+	public $src;
+	public $VGC_ref;
+	public function get($data){
+		$_src		=$this->getSrc($data);
+		$_srcName	=$this->getSrcName($data);
+		$_VGC_ref	=$this->getVGC_ref($data);
+
+		foreach($_VGC_ref as $k=>$v){
+			$s=$v['source'];
+			$l=$v['line'];
+			$p=str_repeat(' ',$v['pos']-1).'^';
+			$_VGC_ref[$k]['str'] =$_src[$s][$l];
+			$_VGC_ref[$k]['name']=$_srcName[$s];
+			$_VGC_ref[$k]['strpos']=$p;
+		}
+		$src=array();
+		
+		foreach($_src as $k=> $v){
+			$src[$k]=array();
+			foreach($v as $kk=>$vv){
+//			echo "$vv\n";
+				$add=null;
+				foreach($_VGC_ref as $kkk=>$vvv){
+					$s=$vvv['source'];
+					$l=(int)$vvv['line'];
+					if($kk==$l){
+						$add=array(1,$vv);
+						break;
+					}
+				}
+				if(!$add) $add=array(0,$vv);
+				$src[$k][]=$add;
+			}
+			
+		}
+
+		$t=array();
+		foreach($_src as $k=> $v){
+			foreach($v as $kk=>$vv){
+//				$_src[$k][$kk]=str_replace('\n','\\n',$vv);
+				$_src[$k][$kk]=str_replace('__SYSREP__','||SYSREP||',$vv);
+			}
+			$t[$k]=implode("\n",$_src[$k]);
+			$t[$k]=preg_replace('@(sub\s+vcl_)(recv|hash|fetch|hit|miss|pass|pipe|error|deliver|init|fini)(\s*{)@','__SYSREP__$1$2$3__SYSREP__',$t[$k]);
+//			var_dump($m);
+		}
+		$tt=array();
+		foreach($t as $k=> $v){
+			$tt[$k]=explode("\n",$v);
+		}
+
+		$src=array();
+		foreach($tt as $k=> $v){
+			$src[$k]=array();
+			$max=count($v)-1;
+			$last=-1;
+//			for($i=$max;$i>=0;$i--){
+			for($i=0;$i<$max;$i++){
+				$add=null;
+				if(strpos($v[$i],'__SYSREP__')!==false){
+					$add=array($last,$v[$i]);
+					$last=-1;
+				}else{
+					foreach($_VGC_ref as $kkk=>$vvv){
+						$s=$vvv['source'];
+						$l=(int)$vvv['line'];
+						if($i==$l && $s==$k){
+							$last=$kkk;
+							$add=array($kkk,$v[$i]);
+							break;
+						}
+					}
+					if(!$add){
+						if(preg_match('@(if|elseif|elsif|else)@',$v[$i])){
+							$add=array(-1,$v[$i]);
+						}else{
+							$add=array($last,$v[$i]);
+						}
+					}
+				}
+				$src[$k][$i]=$add;
+				
+			}
+			krsort($src[$k]);
+			
+		}
+
+		foreach($src as $k=>$v){
+			$last=-1;
+			foreach($v as $kk=>$vv){
+				if($vv[0]>-1){
+					$last=$vv[0];
+				}else{
+					$src[$k][$kk][0]=$last;
+				}
+				$src[$k][$kk][1]=str_replace('__SYSREP__','',$src[$k][$kk][1]);
+		//		$src[$k][$kk][1]=str_replace('\\n','\n',$src[$k][$kk][1]);
+				$src[$k][$kk][1]=str_replace('||SYSREP||','__SYSREP__',$src[$k][$kk][1]);
+				
+			}
+			ksort($src[$k]);
+		}
+
+		$this->VGC_ref=$_VGC_ref;
+		$this->src=$src;
+		
+//		return $_VGC_ref;
+	}
+
+
+	private function getSrc($data){
+		$start="\n".'const char *srcbody[2] = {'."\n";
+		$end="\n};\n";
+		$d=$this->_substr($data,$start,$end);
+		$d=substr($d,strlen($start));
+
+		$d=$this->_filter($d);
+		//echo $d;
+		$de=explode("\n\",\n",$d);
+		//var_dump($de);exit;
+	//		array_shift($de);
+	//		array_shift($de);
+
+		$src=array();
+		foreach($de as $v){
+			$src[]=explode("\n",$v);
+		}
+		foreach($src as $k=>$v){
+//			array_shift($src[$k]);
+//			array_shift($src[$k]);
+		}
+		return $src;
+	}
+	private function _substr($data,$start,$end){
+		$s=strpos($data,$start);
+		$e=strpos($data,$end,$s);
+		return substr($data,$s,$e-$s);
+
+	}
+	private function _filter($d){
+		$d=preg_replace("@(\r)?\\\\n\"\n@","\n",$d);
+		$d=preg_replace("@\n\s+\"@","\n",$d);
+		$d=preg_replace("@\\\\t@","\t",$d);
+		$d=preg_replace("@\\\\\"@",'"',$d);
+		return $d;
+	}
+	private function getSrcName($data){
+		$start="\n".'const char *srcname[2] = {';
+		$end="\n};\n";
+		$d=$this->_substr($data,$start,$end);
+		$d=$this->_filter($d);
+		$d=str_replace('",','',$d);
+
+		$de=explode("\n\",\n",$d);
+		$src=array();
+		foreach($de as $v){
+			$src[]=explode("\n",$v);
+		}
+		foreach($src as $k=>$v){
+			array_shift($src[$k]);
+			array_shift($src[$k]);
+		}
+		return $src[0];
+	}
+
+	private function getVGC_ref($data){
+		$start="\n".'static struct vrt_ref VGC_ref[VGC_NREFS] = {';
+		$end="\n};\n";
+		$d=$this->_substr($data,$start,$end);
+		preg_match_all('@\[ *([0-9]+)\] *= *{ *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+), *"([^"]+)"@',$d,$m);
+		$r=array();
+		$max=count($m[0]);
+		for($i=0;$i<$max;$i++){
+			$r[$m[1][$i]]=array(
+				"source"	=>$m[2][$i],
+				"offset"	=>$m[3][$i],
+				"line"		=>$m[4][$i],
+				"pos"		=>$m[5][$i],
+				"count"		=>$m[6][$i],
+				"token"		=>$m[7][$i],
+				"name"		=>'',
+				"str"		=>'',
+				"strpos"	=>'',
+			);
+		}
+		return $r;
+	}
 
 }
 
@@ -151,29 +354,44 @@ class util{
     return false;
   }
 /////////////////////////////////////////////////////
-  private function _trace2array($vv){
+  private function _trace2array($vv,&$trace,$vcl=null){
     $tmp = array();
     switch($vv['type']){
       case 'trace':
-        $m = "vrt_count:{$vv['vrt_count']} vcl_line:{$vv['vcl_line']} vcl_pos:{$vv['vcl_pos']}";
-        $tmp = array(
-          'k' => $vv['type'],
-          'v' => $m
-        );
+        $trace[]=$vv['vrt_count'];
+        if(is_null($vcl)){
+          $m = "vrt_count:{$vv['vrt_count']} vcl_line:{$vv['vcl_line']} vcl_pos:{$vv['vcl_pos']}";
+          $tmp = array(array(
+            'k' => $vv['type'],
+            'v' => $m
+          ));
+        }else{
+          $m = $vcl[$vv['vrt_count']]['str'];
+          $m2 = $vcl[$vv['vrt_count']]['strpos'].' ('."vrt_count:{$vv['vrt_count']} vcl_line:{$vv['vcl_line']} vcl_pos:{$vv['vcl_pos']} src_name:{$vcl[$vv['vrt_count']]['name']})";
+          $tmp=array();
+          $tmp[]=array(
+            'k' => $vv['type'],
+            'v' => $m
+          );
+          $tmp[]=array(
+            'k' => ' ',
+            'v' => $m2
+          );
+        }
         break;
       default:
         $m = $vv['data'];
-        $tmp = array(
+        $tmp = array(array(
           'k' => $vv['type'],
           'v' => $m
-        );
+        ));
         break;
     }
     return $tmp;
   }
 
 /////////////////////////////////////////////////////
-  public function echoData($no = 0){
+  public function echoData($no = 0,$vcl=null,$src=null){
     $restart = 0;
     $d = &$this->retData[$no];
 
@@ -268,7 +486,7 @@ class util{
       'v' => "HIT:{$hit} MISS:{$miss}",
     );
 
-
+$vrtcntlist=array();
     $this->_echo($tmp);
 //////////////////////////
     //calllist
@@ -292,8 +510,13 @@ class util{
       }
 
 //////////
+      
       foreach($v['trace'] as $kk => $vv){
-        $tmpm[] = $this->_trace2array($vv);
+        $tmpret = $this->_trace2array($vv,$vrtcntlist,$vcl);
+        foreach($tmpret as $tmpretv){
+           $tmpm[] = $tmpretv;
+        }
+//        $tmpm[] = $this->_trace2array($vv,$vrtcntlist,$vcl);
       }
 //      $tmpm[] = array('k' => '','v' => '');
       if($v['method'] == 'hash' && isset($d['hash'][$v['count']])){
@@ -311,6 +534,14 @@ class util{
     }
     $this->_echoRect($tmp);
     echo "\n\n";
+
+if($src){
+  foreach($src as $k=>$v)
+    foreach($v as $kk=>$vv){
+      if(in_array($vv[0],$vrtcntlist)) echo "★";
+      echo "\t$vv[1]\n";
+    }
+}
 
 //////////////////////////
     //ヘッダリスト
@@ -496,6 +727,28 @@ class util{
         $tmp['count']       = $req['count'];
         $tmp['trace']       = array();
         if($call_cnt>2){
+          //12 VCL_call     c recv 1 8.1 3 16.1 8 41.5 9 42.9 11 46.13 12 49.5 14 59.5 16 63.5 18 67.5 lookup
+          $cmax           = $call_cnt-1;
+          $vrtcount       = 0;
+          $vrtline        = 0;
+          $vrtpos         = 0;
+          if(!isset($tmp['trace']))
+            $tmp['trace'] = array();
+          for($x=1 ; $x < $cmax ; $x++){
+            if(0!=($x % 2)){
+              $vrtcount = $t[$x];
+            }else{
+              $tt = explode('.',$t[$x]);
+              $trace              = array();
+              $trace['type']      = 'trace';
+              $trace['vrt_count'] = $vrtcount;
+              $trace['vcl_line']  = $tt[0];
+              $trace['vcl_pos']   = $tt[1];
+              $trace['count']     = $req['count'];
+              $tmp['trace'][]     = $trace;
+            }
+          }
+/*
           $tt                 = explode('.',$t[2]);
           $tmp['trace'][]     = array();
           $trace              = &$tmp['trace'][0];
@@ -504,6 +757,7 @@ class util{
           $trace['vcl_line']  = $tt[0];
           $trace['vcl_pos']   = $tt[1];
           $trace['count']     = $req['count'];
+*/
         }
 
         $tmp['return']  =$ret;
