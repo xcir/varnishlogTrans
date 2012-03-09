@@ -3,7 +3,14 @@
 //   12 VCL_call     c recv 1 8.1 3 16.1 8 41.5 9 42.9 11 46.13 12 49.5 14 59.5 16 63.5 18 67.5 lookup
 //3つセットで格納　2以上格納されている場合はreturnあり
 
+function getcmd(){
+  $cmd="ps x|grep varnish";
+  $r = shell_exec($cmd);
+  //var_dump($r);
+}
+
 function main(){
+  getcmd();//test
   if(count($_SERVER['argv'])>1){
     $_vcl=shell_exec("varnishd -d -f {$_SERVER['argv'][1]} -C");//とりあえずチェック中(testing..)
     $getvcl = new getVCL();
@@ -19,16 +26,20 @@ function main(){
     if($raw == '') continue;
 
     $rawA = $util->rawDecode($raw);
-
-    if($util->addTrx($rawA)){
-      if(isset($_vcl)){
-        $util->echoData(0,$getvcl->VGC_ref);
-      }else{
-        $util->echoData(0);
+    if($rawA['trx']=='0'){
+      $util->addStatus($rawA);
+      
+    }else{
+      if($util->addTrx($rawA)){
+        if(isset($_vcl)){
+          $util->echoData(0,$getvcl->VGC_ref);
+        }else{
+          $util->echoData(0);
+        }
+  //      $util->echoData(0,$getvcl->VGC_ref,$getvcl->src);
+        $util->clearRetData();
+      
       }
-//      $util->echoData(0,$getvcl->VGC_ref,$getvcl->src);
-      $util->clearRetData();
-    
     }
   }
   fclose($fh); 
@@ -81,7 +92,6 @@ class getVCL{
 			}
 			$t[$k]=implode("\n",$_src[$k]);
 			$t[$k]=preg_replace('@(sub\s+vcl_)(recv|hash|fetch|hit|miss|pass|pipe|error|deliver|init|fini)(\s*{)@','__SYSREP__$1$2$3__SYSREP__',$t[$k]);
-//			var_dump($m);
 		}
 		$tt=array();
 		foreach($t as $k=> $v){
@@ -156,7 +166,6 @@ class getVCL{
 		$d=$this->_filter($d);
 		//echo $d;
 		$de=explode("\n\",\n",$d);
-		//var_dump($de);exit;
 	//		array_shift($de);
 	//		array_shift($de);
 
@@ -233,10 +242,12 @@ class util{
   protected $tagVar;
   protected $tmpTrx;
   protected $retData;
+  protected $backendHealthy;
 
   function __construct(){
-    $this->retData  =array();
-    $this->tmpTrx  = array();
+    $this->retData        = array();
+    $this->tmpTrx         = array();
+    $this->backendHealthy = array();
 
     $this->tagRep  = array(
       'Header'   =>'http',
@@ -313,7 +324,6 @@ class util{
 
     //描画Rect
     foreach($ar as $v){
-//    var_dump($v['value']);
       if(isset($v['title'])){
         $d = (int)($maxkey-strlen($v['title']))/2+1;
         echo str_repeat(' ',$d).$v['title']."\n";
@@ -488,6 +498,8 @@ class util{
 
 $vrtcntlist=array();
     $this->_echo($tmp);
+echo "\n";
+$this->echoBackendHealthy();
 //////////////////////////
     //calllist
     $this->_echoline();
@@ -630,7 +642,66 @@ if($src){
     $this->retData = array();
     $this->tmpTrx  = array();
   }
-
+/////////////////////////////////////////////////////
+  public function echoBackendHealthy(){
+    $tmp = array(array('k'=>'name','v'=>'status  | past status'));
+    foreach($this->backendHealthy as $k=>$v){
+      $txt = '';
+      foreach($v as $vv){
+        if($vv['healthy']){
+          $txt.='Y';
+        }else{
+          $txt.='-';
+        }
+      }
+      $kt='sick    | ';
+      if($v[0]['healthy'])
+        $kt='healthy | ';
+      $tmp[] = array(
+            'k' => $k,
+            'v' => $kt.$txt
+      );
+    }
+    $this->_echoline('#');
+    echo "backend status\n";
+    $this->_echoline('-');
+    $this->_echo($tmp);
+  }
+/////////////////////////////////////////////////////
+  public function addStatus($raw){
+    if(!$raw) return false;
+    $n    = $raw['trx'];
+    $tag  = $raw['tag'];
+    switch($tag){
+      case 'Backend_health':
+        $t  = explode(' ',$raw['msg']);
+//               0      1     2     3     4 5 6    7      8      
+//  string(72) "apache Still sick 4--X-R- 0 3 8 0.000562 0.000000 HTTP/1.1 404 Not Found"
+        $ta = array(
+          'backend'       => $t[0],
+          'state'         => $t[1] . ' ' . $t[2],
+          'flag'          => $t[3],
+          'good'          => $t[4],
+          'thr'           => $t[5],
+          'window'        => $t[6],
+          'resp'          => $t[7],
+          'goodrespavg'   => $t[8],
+          'status'        => implode(' ' , array_slice($t,9)),
+          'healthy'       => false,
+        );
+        if('Still healthy' == $ta['state'] ||
+           'Back healthy'  == $ta['state'])
+          $ta['healthy'] = true;
+        
+        if(!isset($this->backendHealthy[$ta['backend']])) $this->backendHealthy[$ta['backend']] = array();
+        $val = &$this->backendHealthy[$ta['backend']];
+        array_unshift($val , $ta);
+        if(count($val) > $ta['window'] * 4){
+          array_pop($val);
+        }
+        break;
+    }
+  }
 /////////////////////////////////////////////////////
   public function addTrx($raw){
     if(!$raw) return false;
@@ -817,7 +888,11 @@ if($src){
     $tmp['var']    =null;
     $tmp['varkey'] =null;
 
-    if($tmp['trx'] == '0'){return false;}
+    if($tmp['trx'] == '0'){
+      if($tmp['tag'] == 'Backend_health')
+        return $tmp;
+      return false;
+    }
     //変数の場合特定する
     $rxtx  =substr($tmp['tag'],0,2);
     if($rxtx == 'Tx' || $rxtx == 'Rx' || $rxtx == 'Ob'){
