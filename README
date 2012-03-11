@@ -30,6 +30,11 @@ Option
 * --action [on|off] (if you want to disable action info , set to off)
 * --variable [on|off] (if you want to disable variable info , set to off)
 
+Version
+----------------
+* 0.2 support backend health info and mapping from vcl_trace to vcl source.
+* 0.1 first release.
+
 output example(before convert)
 ----------------
 
