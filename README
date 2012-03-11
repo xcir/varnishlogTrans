@@ -10,7 +10,8 @@ Feature Overview
 * show variable.
 * support ESI request.
 * support restart.
-
+* mapping from vcl_trace to vcl source.
+* show backend health.
 
 LICENSE
 ----------------
@@ -21,25 +22,40 @@ How to use
 ----------------
 * varnishlog | php vltrans.php
 
+Option
+----------------
+* -f [vclfile] (mapping from vcl_trace to vcl source)
+* -cc_command [cc_command] (please setting if you set in the varnish)
+* --backend [on|off] (if you want to disable backend health info , set to off)
+* --action [on|off] (if you want to disable action info , set to off)
+* --variable [on|off] (if you want to disable variable info , set to off)
 
 output example(before convert)
 ----------------
 
+    0 Backend_health - default Still healthy 4--X-RH 5 3 8 0.000444 0.000173 HTTP/1.1 200 OK
     0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727157 1.0
-   13 BackendOpen  b default 192.168.1.199 36011 192.168.1.199 81
+    0 CLI          - Wr 200 19 PONG 1331483120 1.0
+    0 CLI          - Rd ping
+    0 CLI          - Wr 200 19 PONG 1331483123 1.0
+    0 Backend_health - default Still healthy 4--X-RH 6 3 8 0.000564 0.000271 HTTP/1.1 200 OK
+    0 CLI          - Rd ping
+    0 CLI          - Wr 200 19 PONG 1331483126 1.0
+   13 BackendOpen  b default 192.168.1.199 54269 192.168.1.199 81
    13 TxRequest    b GET
    13 TxURL        b /test2.html
    13 TxProtocol   b HTTP/1.1
    13 TxHeader     b User-Agent: Wget/1.12 (linux-gnu)
    13 TxHeader     b Accept: */*
    13 TxHeader     b Host: 192.168.1.199:6081
-   13 TxHeader     b X-Varnish: 171551254
+   13 TxHeader     b X-TEST1: 0000000000000000000000000000000000000000000000000000000000000000
+   13 TxHeader     b X-Forwarded-For: 192.168.1.199
+   13 TxHeader     b X-Varnish: 1009735712
    13 TxHeader     b Accept-Encoding: gzip
    13 RxProtocol   b HTTP/1.1
    13 RxStatus     b 200
    13 RxResponse   b OK
-   13 RxHeader     b Date: Sat, 28 Jan 2012 05:05:59 GMT
+   13 RxHeader     b Date: Sun, 11 Mar 2012 16:25:29 GMT
    13 RxHeader     b Server: Apache/2.2.15 (Scientific Linux)
    13 RxHeader     b Last-Modified: Sat, 23 Jul 2011 08:09:05 GMT
    13 RxHeader     b ETag: "5a28-51-4a8b8187f8177"
@@ -50,19 +66,21 @@ output example(before convert)
    13 Fetch_Body   b 4(length) cls 0 mklen 1
    13 Length       b 81
    13 BackendClose b default
-   13 BackendOpen  b default 192.168.1.199 36012 192.168.1.199 81
+   13 BackendOpen  b default 192.168.1.199 54270 192.168.1.199 81
    13 TxRequest    b GET
    13 TxURL        b /test3.html
    13 TxProtocol   b HTTP/1.1
    13 TxHeader     b User-Agent: Wget/1.12 (linux-gnu)
    13 TxHeader     b Accept: */*
    13 TxHeader     b Host: 192.168.1.199:6081
-   13 TxHeader     b X-Varnish: 171551254
+   13 TxHeader     b X-TEST1: 37ba63591e0c19f20269eba6c776718e2c78bd4123ce0b30ac310c748b2e1bc2
+   13 TxHeader     b X-Forwarded-For: 192.168.1.199
+   13 TxHeader     b X-Varnish: 1009735712
    13 TxHeader     b Accept-Encoding: gzip
    13 RxProtocol   b HTTP/1.1
    13 RxStatus     b 200
    13 RxResponse   b OK
-   13 RxHeader     b Date: Sat, 28 Jan 2012 05:05:59 GMT
+   13 RxHeader     b Date: Sun, 11 Mar 2012 16:25:29 GMT
    13 RxHeader     b Server: Apache/2.2.15 (Scientific Linux)
    13 RxHeader     b Last-Modified: Sat, 23 Jul 2011 08:08:59 GMT
    13 RxHeader     b ETag: "5a29-14-4a8b81829c835"
@@ -73,8 +91,8 @@ output example(before convert)
    13 Fetch_Body   b 4(length) cls 0 mklen 1
    13 Length       b 20
    13 BackendClose b default
-   12 SessionOpen  c 192.168.1.199 55115 :6081
-   12 ReqStart     c 192.168.1.199 55115 171551254
+   12 SessionOpen  c 192.168.1.199 53343 :6081
+   12 ReqStart     c 192.168.1.199 53343 1009735712
    12 RxRequest    c GET
    12 RxURL        c /test2.html
    12 RxProtocol   c HTTP/1.0
@@ -82,30 +100,24 @@ output example(before convert)
    12 RxHeader     c Accept: */*
    12 RxHeader     c Host: 192.168.1.199:6081
    12 RxHeader     c Connection: Keep-Alive
-   12 VCL_call     c recv 1 7.1
-   12 VCL_Log      c a
-   12 VCL_trace    c 2 9.1
-   12 VCL_Log      c b
-   12 VCL_trace    c 3 11.1
-   12 VCL_Log      c a
-   12 VCL_return   c lookup
-   12 VCL_call     c hash 18 85.5
+   12 VCL_call     c recv 1 55.1 3 63.1 9 41.5 10 42.9 12 46.13 13 49.5 15 59.5 17 63.5 19 67.5 lookup
+   12 VCL_call     c hash 4 66.6
    12 Hash         c /test2.html
-   12 VCL_trace    c 19 87.9
+   12 VCL_trace    c 5 69.10
    12 Hash         c 192.168.1.199:6081
    12 VCL_return   c hash
-   12 VCL_call     c miss 22 99.5 fetch
+   12 VCL_call     c miss 26 99.5 fetch
    12 Backend      c 13 default default
-   12 TTL          c 171551254 RFC 120 -1 -1 1327727160 0 1327727159 0 0
-   12 VCL_call     c fetch 4 18.1 deliver
+   12 TTL          c 1009735712 RFC 120 -1 -1 1331483129 0 1331483129 0 0
+   12 VCL_call     c fetch 7 77.1 27 103.5 29 112.5 deliver
    12 ObjProtocol  c HTTP/1.1
    12 ObjResponse  c OK
-   12 ObjHeader    c Date: Sat, 28 Jan 2012 05:05:59 GMT
+   12 ObjHeader    c Date: Sun, 11 Mar 2012 16:25:29 GMT
    12 ObjHeader    c Server: Apache/2.2.15 (Scientific Linux)
    12 ObjHeader    c Last-Modified: Sat, 23 Jul 2011 08:09:05 GMT
    12 ObjHeader    c ETag: "5a28-51-4a8b8187f8177"
    12 ObjHeader    c Content-Type: text/html; charset=UTF-8
-   12 VCL_call     c deliver 26 116.5 deliver
+   12 VCL_call     c deliver 8 80.1 30 116.5 deliver
    12 TxProtocol   c HTTP/1.1
    12 TxStatus     c 200
    12 TxResponse   c OK
@@ -113,44 +125,44 @@ output example(before convert)
    12 TxHeader     c Last-Modified: Sat, 23 Jul 2011 08:09:05 GMT
    12 TxHeader     c ETag: "5a28-51-4a8b8187f8177"
    12 TxHeader     c Content-Type: text/html; charset=UTF-8
-   12 TxHeader     c Date: Sat, 28 Jan 2012 05:05:59 GMT
-   12 TxHeader     c X-Varnish: 171551254
+   12 TxHeader     c Date: Sun, 11 Mar 2012 16:25:29 GMT
+   12 TxHeader     c X-Varnish: 1009735712
    12 TxHeader     c Age: 0
    12 TxHeader     c Via: 1.1 varnish
    12 TxHeader     c Connection: close
-   12 VCL_call     c recv 1 7.1
-   12 VCL_Log      c a
-   12 VCL_trace    c 2 9.1
-   12 VCL_Log      c b
-   12 VCL_trace    c 3 11.1
-   12 VCL_Log      c a
-   12 VCL_return   c lookup
-   12 VCL_call     c hash 18 85.5
+   12 TxHeader     c X-TEST1: 0000000000000000000000000000000000000000000000000000000000000000
+   12 TxHeader     c X-HASH: 37ba63591e0c19f20269eba6c776718e2c78bd4123ce0b30ac310c748b2e1bc2
+   12 TxHeader     c test: Thu, 01 Jan 1970 00:00:00 GMT
+   12 VCL_call     c recv 1 55.1 3 63.1 9 41.5 10 42.9 12 46.13 13 49.5 15 59.5 17 63.5 19 67.5 lookup
+   12 VCL_call     c hash 4 66.6
    12 Hash         c /test3.html
-   12 VCL_trace    c 19 87.9
+   12 VCL_trace    c 5 69.10
    12 Hash         c 192.168.1.199:6081
    12 VCL_return   c hash
-   12 VCL_call     c miss 22 99.5 fetch
+   12 VCL_call     c miss 26 99.5 fetch
    12 Backend      c 13 default default
-   12 TTL          c 171551254 RFC 120 -1 -1 1327727160 0 1327727159 0 0
-   12 VCL_call     c fetch 4 18.1 deliver
+   12 TTL          c 1009735712 RFC 120 -1 -1 1331483129 0 1331483129 0 0
+   12 VCL_call     c fetch 7 77.1 27 103.5 29 112.5 deliver
    12 ObjProtocol  c HTTP/1.1
    12 ObjResponse  c OK
-   12 ObjHeader    c Date: Sat, 28 Jan 2012 05:05:59 GMT
+   12 ObjHeader    c Date: Sun, 11 Mar 2012 16:25:29 GMT
    12 ObjHeader    c Server: Apache/2.2.15 (Scientific Linux)
    12 ObjHeader    c Last-Modified: Sat, 23 Jul 2011 08:08:59 GMT
    12 ObjHeader    c ETag: "5a29-14-4a8b81829c835"
    12 ObjHeader    c Content-Type: text/html; charset=UTF-8
-   12 VCL_call     c deliver 26 116.5 deliver
+   12 VCL_call     c deliver 8 80.1 30 116.5 deliver
    12 Length       c 20
-   12 ReqEnd       c 171551254 1327727159.889132023 1327727159.890880346 -0.001736164 nan nan
+   12 ReqEnd       c 1009735712 1331483129.079551935 1331483129.080940008 -0.001376867 nan nan
    12 SessionClose c EOF mode
-   12 StatSess     c 192.168.1.199 55115 0 1 1 0 0 2 282 20
+   12 StatSess     c 192.168.1.199 53343 0 1 1 0 0 2 469 20
+    0 Backend_health - default Still healthy 4--X-RH 7 3 8 0.000398 0.000303 HTTP/1.1 200 OK
     0 CLI          - Rd ping
-    0 CLI          - Wr 200 19 PONG 1327727160 1.0
+    0 CLI          - Wr 200 19 PONG 1331483129 1.0
+    0 CLI          - Rd ping
+    0 CLI          - Wr 200 19 PONG 1331483132 1.0
 
 
-output example(after convert)
+output example(after convert. use -f option)
 ----------------
 
 
@@ -159,32 +171,51 @@ client request host | 192.168.1.199:6081
 client request url  | /test2.html
 response size       | 20 byte
 response status     | HTTP/1.1 200 OK
-Total time          | 0.0017483234405518 sec
+Total time          | 0.0013880729675293 sec
 restart count       | 0
 ESI count           | 1
 call backend        | 2 default(192.168.1.199:81) default(192.168.1.199:81)
 Cache               | HIT:0 MISS:2
+
+############################################################
+backend status
+------------------------------------------------------------
+name    | status  | past status
+default | healthy | YY
+
+############################################################
+action sequence
 ------------------------------------------------------------
 -------------------
 |      recv       |
 -------------------
          |
-         | trace  | vrt_count:1 vcl_line:7 vcl_pos:1
-         | log    | a
-         | trace  | vrt_count:2 vcl_line:9 vcl_pos:1
-         | log    | b
-         | trace  | vrt_count:3 vcl_line:11 vcl_pos:1
-         | log    | a
-         |        |
+         | trace  | set req.http.X-TEST1=campur_xcir.gethash();
+         |        | ^ (vrt_count:1 vcl_line:55 vcl_pos:1 src_name:input)
+         | trace  | }
+         |        | ^ (vrt_count:3 vcl_line:63 vcl_pos:1 src_name:input)
+         | trace  |     if (req.restarts == 0) {
+         |        |     ^ (vrt_count:9 vcl_line:41 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.http.x-forwarded-for) {
+         |        |         ^ (vrt_count:10 vcl_line:42 vcl_pos:9 src_name:Default)
+         | trace  |         set req.http.X-Forwarded-For = client.ip;
+         |        |             ^ (vrt_count:12 vcl_line:46 vcl_pos:13 src_name:Default)
+         | trace  |     if (req.request != "GET" &&
+         |        |     ^ (vrt_count:13 vcl_line:49 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.request != "GET" && req.request != "HEAD") {
+         |        |     ^ (vrt_count:15 vcl_line:59 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.http.Authorization || req.http.Cookie) {
+         |        |     ^ (vrt_count:17 vcl_line:63 vcl_pos:5 src_name:Default)
+         | trace  |     return (lookup);
+         |        |     ^ (vrt_count:19 vcl_line:67 vcl_pos:5 src_name:Default)
          | return | lookup
          |
 -------------------
 |      hash       |
 -------------------
          |
-         | trace  | vrt_count:18 vcl_line:85 vcl_pos:5
-         | trace  | vrt_count:19 vcl_line:87 vcl_pos:9
-         |        |
+         | trace  |          hash_data(req.http.host);
+         |        |          ^ (vrt_count:5 vcl_line:69 vcl_pos:10 src_name:input)
          | hash   | /test2.html + 192.168.1.199:6081
          | return | hash
          |
@@ -192,24 +223,30 @@ Cache               | HIT:0 MISS:2
 |      miss       |
 -------------------
          |
-         | trace  | vrt_count:22 vcl_line:99 vcl_pos:5
-         |        |
+         | trace  |     return (fetch);
+         |        |     ^ (vrt_count:26 vcl_line:99 vcl_pos:5 src_name:Default)
          | return | fetch
          |
 -------------------
 |      fetch      |
 -------------------
          |
-         | trace  | vrt_count:4 vcl_line:18 vcl_pos:1
-         |        |
+         | trace  | set beresp.do_esi=true;
+         |        | ^ (vrt_count:7 vcl_line:77 vcl_pos:1 src_name:input)
+         | trace  |     if (beresp.ttl <= 0s ||
+         |        |     ^ (vrt_count:27 vcl_line:103 vcl_pos:5 src_name:Default)
+         | trace  |     return (deliver);
+         |        |     ^ (vrt_count:29 vcl_line:112 vcl_pos:5 src_name:Default)
          | return | deliver
          |
 -------------------
 |     deliver     |
 -------------------
          |
-         | trace  | vrt_count:26 vcl_line:116 vcl_pos:5
-         |        |
+         | trace  | set resp.http.X-TEST1 = req.http.X-TEST1;
+         |        | ^ (vrt_count:8 vcl_line:80 vcl_pos:1 src_name:input)
+         | trace  |     return (deliver);
+         |        |     ^ (vrt_count:30 vcl_line:116 vcl_pos:5 src_name:Default)
          | return | deliver
          |
  <<ESI request>>
@@ -217,22 +254,32 @@ Cache               | HIT:0 MISS:2
 |      recv       |
 -------------------
          |
-         | trace  | vrt_count:1 vcl_line:7 vcl_pos:1
-         | log    | a
-         | trace  | vrt_count:2 vcl_line:9 vcl_pos:1
-         | log    | b
-         | trace  | vrt_count:3 vcl_line:11 vcl_pos:1
-         | log    | a
-         |        |
+         | trace  | set req.http.X-TEST1=campur_xcir.gethash();
+         |        | ^ (vrt_count:1 vcl_line:55 vcl_pos:1 src_name:input)
+         | trace  | }
+         |        | ^ (vrt_count:3 vcl_line:63 vcl_pos:1 src_name:input)
+         | trace  |     if (req.restarts == 0) {
+         |        |     ^ (vrt_count:9 vcl_line:41 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.http.x-forwarded-for) {
+         |        |         ^ (vrt_count:10 vcl_line:42 vcl_pos:9 src_name:Default)
+         | trace  |         set req.http.X-Forwarded-For = client.ip;
+         |        |             ^ (vrt_count:12 vcl_line:46 vcl_pos:13 src_name:Default)
+         | trace  |     if (req.request != "GET" &&
+         |        |     ^ (vrt_count:13 vcl_line:49 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.request != "GET" && req.request != "HEAD") {
+         |        |     ^ (vrt_count:15 vcl_line:59 vcl_pos:5 src_name:Default)
+         | trace  |     if (req.http.Authorization || req.http.Cookie) {
+         |        |     ^ (vrt_count:17 vcl_line:63 vcl_pos:5 src_name:Default)
+         | trace  |     return (lookup);
+         |        |     ^ (vrt_count:19 vcl_line:67 vcl_pos:5 src_name:Default)
          | return | lookup
          |
 -------------------
 |      hash       |
 -------------------
          |
-         | trace  | vrt_count:18 vcl_line:85 vcl_pos:5
-         | trace  | vrt_count:19 vcl_line:87 vcl_pos:9
-         |        |
+         | trace  |          hash_data(req.http.host);
+         |        |          ^ (vrt_count:5 vcl_line:69 vcl_pos:10 src_name:input)
          | hash   | /test3.html + 192.168.1.199:6081
          | return | hash
          |
@@ -240,24 +287,30 @@ Cache               | HIT:0 MISS:2
 |      miss       |
 -------------------
          |
-         | trace  | vrt_count:22 vcl_line:99 vcl_pos:5
-         |        |
+         | trace  |     return (fetch);
+         |        |     ^ (vrt_count:26 vcl_line:99 vcl_pos:5 src_name:Default)
          | return | fetch
          |
 -------------------
 |      fetch      |
 -------------------
          |
-         | trace  | vrt_count:4 vcl_line:18 vcl_pos:1
-         |        |
+         | trace  | set beresp.do_esi=true;
+         |        | ^ (vrt_count:7 vcl_line:77 vcl_pos:1 src_name:input)
+         | trace  |     if (beresp.ttl <= 0s ||
+         |        |     ^ (vrt_count:27 vcl_line:103 vcl_pos:5 src_name:Default)
+         | trace  |     return (deliver);
+         |        |     ^ (vrt_count:29 vcl_line:112 vcl_pos:5 src_name:Default)
          | return | deliver
          |
 -------------------
 |     deliver     |
 -------------------
          |
-         | trace  | vrt_count:26 vcl_line:116 vcl_pos:5
-         |        |
+         | trace  | set resp.http.X-TEST1 = req.http.X-TEST1;
+         |        | ^ (vrt_count:8 vcl_line:80 vcl_pos:1 src_name:input)
+         | trace  |     return (deliver);
+         |        |     ^ (vrt_count:30 vcl_line:116 vcl_pos:5 src_name:Default)
          | return | deliver
          |
 
@@ -285,14 +338,16 @@ bereq.proto                | HTTP/1.1
 bereq.http.User-Agent      | Wget/1.12 (linux-gnu)
 bereq.http.Accept          | */*
 bereq.http.Host            | 192.168.1.199:6081
-bereq.http.X-Varnish       | 171551254
+bereq.http.X-TEST1         | 0000000000000000000000000000000000000000000000000000000000000000
+bereq.http.X-Forwarded-For | 192.168.1.199
+bereq.http.X-Varnish       | 1009735712
 bereq.http.Accept-Encoding | gzip
 
 ------------------------------------------------------------
 beresp.proto               | HTTP/1.1
 beresp.status              | 200
 beresp.response            | OK
-beresp.http.Date           | Sat, 28 Jan 2012 05:05:59 GMT
+beresp.http.Date           | Sun, 11 Mar 2012 16:25:29 GMT
 beresp.http.Server         | Apache/2.2.15 (Scientific Linux)
 beresp.http.Last-Modified  | Sat, 23 Jul 2011 08:09:05 GMT
 beresp.http.ETag           | "5a28-51-4a8b8187f8177"
@@ -304,7 +359,7 @@ beresp.http.Content-Type   | text/html; charset=UTF-8
 ------------------------------------------------------------
 obj.proto              | HTTP/1.1
 obj.response           | OK
-obj.http.Date          | Sat, 28 Jan 2012 05:05:59 GMT
+obj.http.Date          | Sun, 11 Mar 2012 16:25:29 GMT
 obj.http.Server        | Apache/2.2.15 (Scientific Linux)
 obj.http.Last-Modified | Sat, 23 Jul 2011 08:09:05 GMT
 obj.http.ETag          | "5a28-51-4a8b8187f8177"
@@ -318,11 +373,14 @@ resp.http.Server        | Apache/2.2.15 (Scientific Linux)
 resp.http.Last-Modified | Sat, 23 Jul 2011 08:09:05 GMT
 resp.http.ETag          | "5a28-51-4a8b8187f8177"
 resp.http.Content-Type  | text/html; charset=UTF-8
-resp.http.Date          | Sat, 28 Jan 2012 05:05:59 GMT
-resp.http.X-Varnish     | 171551254
+resp.http.Date          | Sun, 11 Mar 2012 16:25:29 GMT
+resp.http.X-Varnish     | 1009735712
 resp.http.Age           | 0
 resp.http.Via           | 1.1 varnish
 resp.http.Connection    | close
+resp.http.X-TEST1       | 0000000000000000000000000000000000000000000000000000000000000000
+resp.http.X-HASH        | 37ba63591e0c19f20269eba6c776718e2c78bd4123ce0b30ac310c748b2e1bc2
+resp.http.test          | Thu, 01 Jan 1970 00:00:00 GMT
 
 ############################################################
 variable infomation.
@@ -336,14 +394,16 @@ bereq.proto                | HTTP/1.1
 bereq.http.User-Agent      | Wget/1.12 (linux-gnu)
 bereq.http.Accept          | */*
 bereq.http.Host            | 192.168.1.199:6081
-bereq.http.X-Varnish       | 171551254
+bereq.http.X-TEST1         | 37ba63591e0c19f20269eba6c776718e2c78bd4123ce0b30ac310c748b2e1bc2
+bereq.http.X-Forwarded-For | 192.168.1.199
+bereq.http.X-Varnish       | 1009735712
 bereq.http.Accept-Encoding | gzip
 
 ------------------------------------------------------------
 beresp.proto               | HTTP/1.1
 beresp.status              | 200
 beresp.response            | OK
-beresp.http.Date           | Sat, 28 Jan 2012 05:05:59 GMT
+beresp.http.Date           | Sun, 11 Mar 2012 16:25:29 GMT
 beresp.http.Server         | Apache/2.2.15 (Scientific Linux)
 beresp.http.Last-Modified  | Sat, 23 Jul 2011 08:08:59 GMT
 beresp.http.ETag           | "5a29-14-4a8b81829c835"
@@ -355,7 +415,7 @@ beresp.http.Content-Type   | text/html; charset=UTF-8
 ------------------------------------------------------------
 obj.proto              | HTTP/1.1
 obj.response           | OK
-obj.http.Date          | Sat, 28 Jan 2012 05:05:59 GMT
+obj.http.Date          | Sun, 11 Mar 2012 16:25:29 GMT
 obj.http.Server        | Apache/2.2.15 (Scientific Linux)
 obj.http.Last-Modified | Sat, 23 Jul 2011 08:08:59 GMT
 obj.http.ETag          | "5a29-14-4a8b81829c835"
