@@ -25,6 +25,7 @@ How to use
 Option
 ----------------
 * -f [vclfile] (mapping from vcl_trace to vcl source)
+* -e [varnishd] (use VCL compile)
 * -cc_command [cc_command] (please setting if you set in the varnish)
 * --backend [on|off] (if you want to disable backend health info , set to off)
 * --action [on|off] (if you want to disable action info , set to off)
@@ -167,7 +168,7 @@ output example(before convert)
     0 CLI          - Wr 200 19 PONG 1331483132 1.0
 
 
-output example(after convert. use -f option)
+output example(after convert. use -f and -e option)
 ----------------
 
 

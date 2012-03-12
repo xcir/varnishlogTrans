@@ -5,9 +5,8 @@ define('experimental' , false);
 /////////////////////////////////////////////////////
 function main(){
   $para = getParam();
-  if(isset($para['-f'])){}
-  if(count($_SERVER['argv'])>1){
-    $cmd = getCmd() . " -d -f {$para['-f']}";
+  if(isset($para['-f']) && isset($para['-e'])){
+    $cmd = $para['-e'] . " -d -f {$para['-f']}";
     if(isset($para['-cc_command']))
       $cmd .= " -p cc_command=\"{$para['-cc_command']}\"";
     $cmd .= ' -C';
