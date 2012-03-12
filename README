@@ -21,6 +21,7 @@ LICENSE
 How to use
 ----------------
 * varnishlog | php vltrans.php
+* ex)  php vltrans.php -e=/usr/sbin/varnishd -f=/etc/varnish/default.vcl -cc_command="exec gcc -std=gnu99 -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic -pthread -fpic -shared -Wl,-x -o %o %s"
 
 Option
 ----------------
