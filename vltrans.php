@@ -852,6 +852,7 @@ class util{
         unset($req);
         $req = &$sess[count($sess)-1];
         $req['var'][0]['client']['ip']   = array($t[0]);
+        $req['var'][0]['req']['xid']   = array($t[2]);
         break;
       case 'Length':
         $req['info']['length'][] = $raw['msg'];
