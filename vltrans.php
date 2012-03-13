@@ -1,7 +1,7 @@
 <?php
 //error_reporting(E_ALL);
 define('experimental' , false);
-
+define('noret',false);
 /////////////////////////////////////////////////////
 function main(){
   $para = getParam();
@@ -50,13 +50,11 @@ function main(){
     }else{
       if($util->addTrx($rawA)){
         if(isset($_vcl)){
-//          if(experimental){
+          if(!noret)
             $util->echoData(0,$getvcl->VGC_ref,$getvcl->src);
-//          }else{
-//            $util->echoData(0,$getvcl->VGC_ref);
-//          }
         }else{
-          $util->echoData(0);
+          if(!noret)
+            $util->echoData(0);
         }
         $util->clearRetData();
       
@@ -151,7 +149,6 @@ class getVCL{
     $d=substr($d,strlen($start));
 
     $d=$this->_filter($d);
-    //echo $d;
     $de=explode("\n\",\n",$d);
   //    array_shift($de);
   //    array_shift($de);
@@ -235,7 +232,6 @@ class getVCL{
     foreach($_src as $k=> $v){
       $src[$k]=array();
       foreach($v as $kk=>$vv){
-//      echo "$vv\n";
         $add=null;
         foreach($_VGC_ref as $kkk=>$vvv){
           $s=$vvv['source'];
@@ -330,12 +326,14 @@ class util{
   protected $tmpTrx;
   protected $retData;
   protected $backendHealthy;
+  protected $backendUseStat;
 
 /////////////////////////////////////////////////////
   function __construct(){
     $this->retData        = array();
     $this->tmpTrx         = array();
     $this->backendHealthy = array();
+    $this->backendUseStat = array();
 
     $this->tagRep  = array(
       'Header'   =>'http',
@@ -804,21 +802,34 @@ class util{
         break;
     }
   }
+/*
+バックエンドのReuseの動き
+backendopen-(trx1)->fetchbody->length->backendreuse-(trx2)->
+*/
 /////////////////////////////////////////////////////
   public function addTrx($raw){
     if(!$raw) return false;
     $n    = $raw['trx'];
     $tag  = $raw['tag'];
+    $tg   = $raw['tg'];
     if(!isset($this->tmpTrx[$n]) && ($tag == 'ReqStart' || $tag == 'BackendOpen'))
       $this->tmpTrx[$n] = array();
-    if(!isset($this->tmpTrx[$n]))
-      return false;
+    if(!isset($this->tmpTrx[$n])){
+      if($tag == 'TxRequest' && $tg =='b' && false !== $this->backendUseStat[$n]){
+        $this->tmpTrx[$n] = array();
+/*
+      }elseif($tag == 'BackendReuse'){
+        if(!$this->backendUseStat[$n])
+          $this->backendUseStat[$n]      =array('backend.name'=>$raw['msg'],'backend.server'=>'unknown(session reuse)');
+*/
+      }else{
+        return false;
+      }
+    }
     $sess = &$this->tmpTrx[$n];
     $t = explode(' ',$raw['msg']);
-
     if(count($sess)>0)
       $req = &$sess[count($sess)-1];
-      
     switch($raw['tag']){
       //バックエンド系
       case 'BackendOpen':
@@ -829,11 +840,29 @@ class util{
           'var'        =>array(),
           'raw'        =>array(),
         );
+        $this->backendUseStat[$n]      =false;
         $req = &$sess[count($sess)-1];
         $req['info']['backend.name']   =$t[0];
         $req['info']['backend.server'] =$t[3].':'.$t[4];
+        $req['info']['backend.reuse']  =false;
+        break;
+      case 'TxRequest':
+        if($tg !='b') break;
+        if(false === $this->backendUseStat[$n]){break;}
+        $sess[] = array(
+          'count'      =>0,
+          'countinfo'  =>array(),
+          'info'       =>array(),
+          'var'        =>array(),
+          'raw'        =>array(),
+        );
+        $req = &$sess[count($sess)-1];
+        $req['info'] =  $this->backendUseStat[$n];
+        $req['info']['backend.reuse'] =true;
+        
         break;
       case 'BackendClose':
+        $this->backendUseStat[$n]=false;
         break;
       //リクエスト系
       case 'ReqStart':
@@ -875,11 +904,16 @@ class util{
         return true;
         break;
       case 'Backend':
+      
         $btmp = array_shift($this->tmpTrx[$t[0]]);
         $req['backend'][] = $btmp;
         foreach($btmp['var'][0] as $k => $v){
           $req['var'][$req['count']][$k] = $v;
         }
+        break;
+      case 'BackendReuse':
+        if(!$this->backendUseStat[$n])
+          $this->backendUseStat[$n]      =array('backend.name'=>$req['info']['backend.name'],'backend.server'=>$req['info']['backend.server']);
         break;
       case 'VCL_call':
         $call_cnt=count($t);
