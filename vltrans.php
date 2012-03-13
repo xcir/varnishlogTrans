@@ -905,6 +905,7 @@ backendopen-(trx1)->fetchbody->length->backendreuse-(trx2)->
         break;
       case 'Backend':
       
+        if(!isset($this->tmpTrx[$t[0]]))break;
         $btmp = array_shift($this->tmpTrx[$t[0]]);
         $req['backend'][] = $btmp;
         foreach($btmp['var'][0] as $k => $v){
