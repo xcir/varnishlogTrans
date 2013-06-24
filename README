@@ -2,6 +2,10 @@ varnishlogTrans
 ================
 convert varnishlog output to easy.
 
+This program is LEGACY.
+New program is here.
+
+https://github.com/xcir/vsltrans
 
 Feature Overview
 ----------------
